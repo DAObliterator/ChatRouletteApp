@@ -1,47 +1,31 @@
-import React, { useState } from "react";
+import React, { useState, useEffect } from "react";
 import io from "socket.io-client";
 import { v4 as uuidv4 } from "uuid";
 import axios from "axios";
+import { randomUsernameGenerator } from "../utils/generateUsername.js";
 
 export const ChatPage = () => {
   const [message, setMessage] = useState("");
+  const [recievedMessages, setRecievedMessages] = useState([]);
+
+  useEffect(() => {
+    axios
+      .get("http://localhost:6040/check-session", { withCredentials: true })
+      .then((response) => {
+        console.log(
+          response.data,
+          " response.data from the /check-session endpoint \n"
+        );
+      })
+      .catch((error) => {
+        console.log(
+          `errror happened while trying to access the /check-session endpoint ${error} \n`
+        );
+      });
+  }, []);
 
   const handleMessageTransmission = async (e) => {
     e.preventDefault();
-
-    const socket = io("http://localhost:6040", {
-      headers: {
-        "Content-Type": "application/json",
-      },
-      withCredentials: true,
-      autoConnect: false,
-    });
-
-    if (message) {
-      console.log(`this is the message ${message}`);
-      const uniqueId = uuidv4();
-      socket.emit("chat-message", { message });
-    }
-
-    axios
-      .get("http://localhost:6040/authenticate-user", {
-        withCredentials: true,
-      })
-      .then((response) => {
-        console.log( response.headers["set-cookie"], " cookie \n");
-      })
-      .catch((error) => {});
-
-    /*const response = await fetch("http://localhost:6040/authenticate-user", {
-      method: "GET", // or 'PUT'
-      headers: {
-        "Content-Type": "application/json",
-      },
-      credentials: "include"
-    });
-
-    const result = await response.headers.getSetCookie();
-    console.log( result , " ---cookie--- ")*/
   };
 
   return (
@@ -50,7 +34,13 @@ export const ChatPage = () => {
       className="w-screen h-screen bg-bg3 flex flex-col "
     >
       <div id="Chat-Container" className="flex flex-col w-full flex-grow">
-        {" "}
+        {recievedMessages.map((element) => {
+          return (
+            <ul className="w-32 h-8 rounded-md bg-bg2 shadow-md p-2 sm:p-4 text-xs font-semibold text-white">
+              {element}
+            </ul>
+          );
+        })}
       </div>
       <form
         id="Send-Message-form"
@@ -63,7 +53,7 @@ export const ChatPage = () => {
           className="flex flex-col items-center justify-center "
         >
           <img
-            src="/avatardummy.png"
+            src="/DaObliterator.png"
             id="Profile-Dummy"
             className="rounded-full w-12 h-12"
           />

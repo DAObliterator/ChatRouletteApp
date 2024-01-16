@@ -1,31 +1,46 @@
-import React from "react";
+import React , { useState } from "react";
 import axios from "axios";
-import { useNavigate } from "react-router-dom";
 import io from "socket.io-client";
+import { useNavigate } from "react-router-dom";
+
 
 export const ModalDialogue = ({ showModal, setShowModal }) => {
 
- 
+  const [roomName , setRoomName ] = useState("");
 
   const socket = io("http://localhost:6040")
   const navigate = useNavigate();
   const handlePartnerCoupling = (e) => {
     e.preventDefault();
-    console.log(" --- :) --- ");
-    axios
-      .get("http://localhost:6040/chats/initiateChat", { withCredentials: true })
-      .then((response) => {
-        console.log(response.data, " response from /findParnter endpoint \n");
-      })
-      .catch((error) => {
-        console.log(error, " error happened! ");
-      })
-      .finally((data) => {
-        console.log(data, " ---inside finally \n");
-      });
+
+     const randomId = window.localStorage.getItem("randomId");
+     const username = window.localStorage.getItem("username");
+
+
+     const userDetails = { randomId, username };
+
+    const socket = io("http://localhost:6040", {
+      withCredentials: true,
+      extraHeaders: {
+        randomId
+      }
+    })
+
+    socket.on("welcome-message" , (msg) => {
+      console.log(msg , " message from room")
+    })
+
+    /*
+    FIND A PARNTER COMPLETE PAIRING CREATE A ROOM AND A ROOM ID USING TWO 
+    UNIQUE SOCKET IDENTFIERS , USE THAT ROOM ID AT THE END OF THE ROUTE ,
+    EACH COMPONENT THAT IS RENDERED AT THESE CUSTOM ROUTES ARE GOING TO BE 
+    DIFFERENT 
+    */
+
+
 
     setShowModal(false);
-    navigate("/chat/new");
+    //navigate("/chats/new");
     
   };
 

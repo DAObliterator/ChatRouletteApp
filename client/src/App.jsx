@@ -1,47 +1,49 @@
 import { useState, useEffect, useContext, createContext } from "react";
-import axios from "axios"
+import axios from "axios";
 import { Box } from "@chakra-ui/react";
 import { Text } from "@chakra-ui/react";
+import { randomUsernameGenerator } from "./utils/generateUsername";
 
 import { ModalDialogue } from "./components/ModalDialogue";
 
 function App() {
+  const [showModal, setShowModal] = useState(false);
+  useEffect(() => {
+    console.log("useEffect executed");
 
-
-    const [ showModal , setShowModal ] = useState(false);
-
-    useEffect(() => {
-      console.log("useEffect executed");
-      axios.get("http://localhost:6040/initialize-session" , {withCredentials: true} ).then((response) => {
-        console.log( response.data );
-      }).catch((error) => {
-        console.log(error, " --- error happened while attempting to initialize session \n"  );
-      })
-
-    },[])
-
-
-  /*const handlePartnerCoupling = (e) => {
-    e.preventDefault();
-    console.log(" --- :) --- ");
-
+    const randomId = randomUsernameGenerator().randomId;
+    const username = randomUsernameGenerator().username;
+    window.localStorage.setItem("randomId", randomId);
+    window.localStorage.setItem("username", username);
     axios
-      .get("http://localhost:6040/findPartner", { withCredentials: true })
+      .post(
+        "http://localhost:6040/initialize-session",
+        { randomId, username },
+        { withCredentials: true }
+      )
       .then((response) => {
-        console.log(response.data, " response from /findParnter endpoint \n");
+        console.log(
+          response.data,
+          response.headers["set-cookie"],
+          " response.data and cookie "
+        );
+        window.localStorage.setItem(
+          "sessionId",
+          response.headers["set-cookie"]
+        );
       })
       .catch((error) => {
-        console.log(error, " error happened! ");
-      })
-      .finally((data) => {
-        console.log(data, " ---inside finally \n");
+        console.log(
+          error,
+          " --- error happened while attempting to initialize session \n"
+        );
       });
-  };*/
+
+  }, []);
 
   const destroyModal = () => {
     setShowModal(false);
-  }
-
+  };
 
   return (
     <div className="flex flex-col justify-center  items-center w-screen h-screen text-3xl bg-bg1 ">
@@ -49,7 +51,7 @@ function App() {
         id="app-name-heading"
         className="text-4xl font-bold tracking-widest text-center m-2 p-4 "
       >
-        TBA 
+        TBA
       </h1>
       <div
         id="main-div"
@@ -60,7 +62,7 @@ function App() {
           className="flex flex-col justify-evenly items-center "
         >
           <h1 className="text-txt1 font-extrabold text-3xl tracking-wide text-center">
-            Hello , Welcome OFFICER lets hook you up with someone to chat {document.cookie}
+            Hello , Welcome OFFICER lets hook you up with someone to chat{" "}
             with...
           </h1>
           <button

@@ -10,6 +10,7 @@ dotenv.config({ path: "./config.env" });
 const app = express();
 const server = http.createServer(app);
 import { Server } from "socket.io";
+import { actualSessionId } from "./utils/actualSessionId.js";
 
 const DB = process.env.DATABASE_STRING.replace(
   "<password>",
@@ -26,7 +27,7 @@ mongoose
       `error - ${error} happened while attempting to connect to database :) \n `
     );
   });
-console.log(process.env.SECRET);
+
 app.use(express.json());
 app.use(bodyParser.json());
 app.use(bodyParser.urlencoded({ extended: true }));
@@ -41,6 +42,7 @@ app.use(
 
 app.use(
   session({
+    name: "sessionId",
     secret: process.env.SECRET,
     resave: false,
     saveUninitialized: true,
@@ -57,34 +59,45 @@ app.use(
   })
 );
 
-app.get("/initialize-session", async (req, res) => {
+app.post("/initialize-session", async (req, res) => {
   try {
     const sess = req.session;
-    console.log(req.session, " --- req.session --- \n");
+    if (!req.session.username && !req.session.randomId) {
+      req.session.randomId = req.body.randomId;
+      req.session.username = req.body.username;
+
+      const mongoStore = req.sessionStore;
+
+      const sessionId = req.sessionID;
+
+      const sessionCollection = mongoStore.collection;
+
+      sessionCollection.updateOne(
+        { _id: sessionId },
+        {
+          $set: {
+            randomId: req.body.randomId,
+            username: req.body.username,
+          },
+        }
+      );
+    }
     res.status(200).json({ message: "session init" });
   } catch (error) {
     res.status(404).json({ message: `session init fail ${error}` });
   }
 });
 
-app.get("/chats/initiateChat", (req, res) => {
-  console.log(`req recieved to chats/initiateChat endpoint`);
+app.get("/check-session", (req, res) => {
+  console.log(req.session, " -- req.session in /check-session \n");
+  if (req.session.randomId && req.session.username) {
+    res.status(200).json({
+      message: "randomId and username successfully added to the req.session \n",
+    });
+  } else {
+    res.status(404).json({ message: "failed 😭" });
+  }
 });
-
-app.get("/findPartner", (req, res) => {
-  /* out of all sockets availabe select one randomly... */
-
-  console.log(` get request received to findPartner endpoint \n`);
-
-  res.status(200).json({ message: "success" });
-});
-
-app.get("/authenticate-user", (req, res) => {
-  console.log(req.headers.cookie, " --cookie in /authenticate-user --- ");
-  res.status(200).json({ status: "success" });
-});
-
-const activeUsers = {};
 
 const io = new Server(server, {
   cors: {
@@ -94,12 +107,68 @@ const io = new Server(server, {
   },
 });
 
-io.on("connection", async (socket) => {
-  console.log(socket.id, " ---socket user connected  \n");
+let arrayOfSockets = [];
 
-  socket.on("chat-message", (msg) => {
-    console.log("message: " + JSON.stringify(msg));
+io.on("connection", async (socket) => {
+  console.log(
+    socket.handshake.headers.cookie,
+    "---cookie in socket.handshake.headers--"
+  );
+
+  io.of("/").sockets.forEach((element) => {
+    console.log(
+      element.handshake.headers.cookie,
+      " cookie in socket handshake header (inside loop) \n"
+    );
+    if (element.id !== socket.id) {
+      const newSocketObject = {
+        socketId: element.id,
+        randomId: element.handshake.headers.randomId,
+        cookie: actualSessionId(element.handshake.headers.cookie),
+      };
+
+      arrayOfSockets.push(newSocketObject);
+    }
   });
+
+  
+  arrayOfSockets = arrayOfSockets.filter((element) => {
+    return element.cookie !== undefined
+  });
+
+  console.log(arrayOfSockets, " ---arrayOfSockets \n");
+
+
+  if (arrayOfSockets.length > 1) {
+    let roomName =
+      "room" +
+      socket.id +
+      arrayOfSockets[Math.floor(Math.random() * arrayOfSockets.length)]
+        .cookie;
+
+    socket.join(roomName);
+
+    const clients = io.sockets.adapter.rooms.get(roomName);
+
+    const numClients = clients ? clients.size : 0;
+
+    io.to(roomName).emit("new event", "Updates");
+
+    let participants = "";
+
+    for (const clientId of clients) {
+      const clientSocket = io.sockets.sockets.get(clientId);
+
+      participants = participants + " " + clientSocket;
+    }
+
+    io.to(roomName).emit(
+      "welcome-message",
+      `hello to ${roomName} and these are `,
+      JSON.stringify(participants),
+      `the participants \n`
+    );
+  }
 });
 
 const PORT = process.env.PORT;
