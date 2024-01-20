@@ -25,6 +25,8 @@ export const ModalDialogue = ({ showModal, setShowModal }) => {
         },
       });
 
+      socket.emit("create-room" , ({ randomId , username }) )
+
       socket.on("welcome-message", (msg) => {
         console.log(msg, " message from room");
         setRoomName(msg.roomName);

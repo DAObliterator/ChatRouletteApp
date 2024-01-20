@@ -107,152 +107,113 @@ const io = new Server(server, {
   },
 });
 
-let arrayOfSockets = [];
 let activeChats = [];
-let roomNames =[];
-let arrayOfSockets2 = [];
+let roomNames = [];
+let arrayOfSockets = [];
 
 io.on("connection", async (socket) => {
-
-  console.log("connected")
+  console.log("connected");
   //socket initialization
 
-  const randomId = socket.handshake.auth.randomId; //here randomId is correct
+  //const randomId = socket.handshake.auth.randomId; //here randomId is correct
 
-  console.log(
-    randomId,
-    " :randomId",
-    socket.handshake.headers.cookie,
-    " :cookie \n"
-  ); //logging identity of socket also the unique identifier that binds socket to each session
+  socket.on("create-room", (data) => {
+    console.log(data, " data from create room event \n");
 
-  socket.join(randomId);
-
-  io.of("/").sockets.forEach((element) => {
-    console.log(
-      element.handshake.auth.randomId,
-      " --randomId (from)  -- unique to each browser -- \n"
-    );
-    if (!arrayOfSockets.includes(element.handshake.auth.randomId)) {
-      arrayOfSockets.push(element.handshake.auth.randomId);
-      arrayOfSockets2.push( { randomId: element.handshake.auth.randomId , socket: element} );
-    }
-  });
-
-  console.log(arrayOfSockets, " ---arrayOfSockets--- \n");
-
-  const findParnter = (array) => {
-    let to = array[Math.floor(Math.random() * array.length)];
-
-    if (to !== socket.handshake.headers.randomId) {
-      console.log(to, "--to--");
-      return to;
-    } else {
-      return findParnter(array);
-    }
-  };
-
-  const to = findParnter(arrayOfSockets); // returns correct to
-
-  if ( to !== randomId) {
-
-    const roomName = "room:" + randomId + to;
-
-    socket.join(roomName);
-
-    console.log( socket.id , "sender socket id \n");
-
-    for ( const i of roomNames) {
-      if (i.randomId === to) {
-        i.socket.join(roomName);
-        console.log(i.socket.id , " receiver socket.id after joining room \n");
+    let from = data.randomId;
+    //storing all active sockets in an array coupled with a unique identifier
+    // to know which browser they are coming from
+    io.of("/").sockets.forEach((element) => {
+      console.log(
+        element.handshake.auth.randomId,
+        " --randomId (from)  -- unique to each browser -- \n"
+      );
+      if (!arrayOfSockets.includes(element.handshake.auth.randomId)) {
+        arrayOfSockets.push({
+          randomId: element.handshake.auth.randomId,
+          socket: element,
+        });
       }
-    }
-
-
-    if ( !roomNames.includes(roomName)) {
-      roomNames.push(roomName);
-    }
-
-    socket.to(roomName).emit("welcome-message", {
-      participants: [randomId, to],
-      roomName: roomName,
     });
 
-  }
+    console.log(arrayOfSockets, " ---arrayOfSockets--- \n");
 
-  socket.on("private message", (data) => {
-    if (data) {
-      console.log(data, "data from private message event \n");
-      try {
-        console.log( io.sockets.adapter.rooms , " all active rooms \n")
-        socket.to(data.room).emit("private message", (data) => { //got it there is no room called data.room
-          console.log(data , " attempting to emit \n");
-        });
-      } catch (error) {
-        console.error(`Error emitting private message: ${error}`);
-      }
+    //finding a Parnter out of all active sockets
+    if (arrayOfSockets.length > 1) {
+      const findParnter = (array) => {
+        let to = array[Math.floor(Math.random() * array.length)];
 
-    } 
-      //console.log(data, " 8 ) ");
-      
-    
-  
-  });
+        if (to.randomId !== data.randomId) {
+          console.log(
+            to.randomId,
+            "--randomId associated with the reciever --"
+          );
+          return to;
+        } else {
+          return findParnter(array);
+        }
+      };
 
+      const to = findParnter(arrayOfSockets);
 
-  /*console.log(to, " ---to--- \n");
+      socket.join(`${from}:${to.randomId}`);
+      to.socket.join(`${from}:${to.randomId}`);
+      const roomName =  from + ":" + to.randomId;
+      roomNames.push(roomName);
 
-  let roomsCurrentUserIn = 0;
-  let roomsreceiverUserIn = 0;
-
-  for (const i of activeChats) {
-    if ( Array.isArray(i.participants) ? i.participants.includes(randomId) : false) {
-      roomsCurrentUserIn = roomsCurrentUserIn + 1;
-    }
-    if (Array.isArray(i.participants) ? i.participants.includes(to) : false) {
-      roomsreceiverUserIn = roomsreceiverUserIn + 1;
-    }
-  }
-
-  if (roomsCurrentUserIn === 0 && roomsreceiverUserIn === 0) {
-    if (arrayOfSockets.length > 1 && randomId !== to) {
-
-      activeChats.push({
-        id: activeChats.length > 0 ? activeChats.length : 0,
-        participants: [ randomId , to],
+      socket.emit("welcome-message", {
+        roomName,
+        participants: [from, to.randomId],
       });
 
     }
-    
-  }
+  });
 
-  console.log(activeChats, " --activeChats Array --- \n");
+  let roomNames2 = []
+  socket.on("private-message" , (data) => {
 
-  for ( const i of activeChats ) {
+    console.log( socket.id , " ---socket.id --- inside of private-message \n");
 
-    if (i.participants.length > 1) {
-      const roomName = 'room-' + i.participants[0] + "-" + i.participants[1];
-      if (!roomNames.includes(roomName)) {
-           roomNames.push(roomName);
-      }
-    
-    }
-
-  }
-
-  for ( const roomName of roomNames ) {
-      if (roomName.includes(randomId)) {
-        socket.join(roomName);
-
-        io.to(roomName).emit("roomCreationSuccessfull", (roomName) => {
-          console.log("roomName --- ", roomName);
+    io.of("/").sockets.forEach((element) => {
+      console.log(
+        element.handshake.auth.randomId,
+        " --randomId (from)  -- unique to each browser -- \n"
+      );
+      if (!arrayOfSockets.includes(element.handshake.auth.randomId)) {
+        arrayOfSockets.push({
+          randomId: element.handshake.auth.randomId,
+          socket: element,
         });
       }
-  }
+    });
 
-  console.log(roomNames)*/
 
+    console.log(arrayOfSockets , "--arrayOfSockets inside private-message \n");
+    
+    const sender = data.room.split(":")[0]; //this is a unique identifier that all sockets send from the same browser are coupled with , sockets change on reinitialization but identifier doesnt 
+    const receiver = data.room.split(":")[1];
+
+    console.log( sender , receiver , " ---sender and ---receiver \n");
+
+    socket.join(data.room)
+
+    for ( const i of arrayOfSockets) {
+      if (i.randomId === receiver) {
+        i.socket.join(data.room)
+        console.log(i.socket.id , " --- id of the other socket in the room \n");
+      }
+    }
+
+    console.log(
+      io.sockets.adapter.rooms,
+      " all rooms inside private message \n"
+    );
+
+    io.to(data.room).emit("private-message" , (data))
+
+    
+
+  });
 });
 
 const PORT = process.env.PORT;

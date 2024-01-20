@@ -10,6 +10,7 @@ export const ChatPage = () => {
   const [recievedMessages, setRecievedMessages] = useState([]);
   const [sentMessages, setSentMessages] = useState([]);
   const [randomId, setRandomId] = useState("");
+  const [ allMessages , setAllMessages ] = useState([]);
 
   const { id } = useParams();
 
@@ -36,6 +37,10 @@ export const ChatPage = () => {
     console.log(`handleMessageTransmission \n`);
 
     setSentMessages([...sentMessages, message]);
+    setAllMessages([
+      ...allMessages,
+      { type: "sent", message: message },
+    ]);
 
     try {
       const socket = io("http://localhost:6040", {
@@ -45,11 +50,13 @@ export const ChatPage = () => {
         },
       });
 
-      console.log("bsjkdn")
+      const sender = id.split(":")[0]; //this is a unique identifier that all sockets send from the same browser are coupled with , sockets change on reinitialization but identifier doesnt
+      const receiver = id.split(":")[1];
+
 
       socket.emit(
-        "private message",
-        { room: id, message: message, sender: randomId },
+        "private-message",
+        { room: id, message: message, sender: sender , receiver: receiver },
         (data) => {
           if (data) {
             console.log(data, " private message data "); //not logging
@@ -57,11 +64,11 @@ export const ChatPage = () => {
         }
       );
 
-      socket.on("private message", (data) => {
-        console.log(data, "uhcidi");
-        if (data.sender !== randomId) {
+      socket.on("private-message", (data) => {
+        if (data.sender !== sender) {
           console.log(data, "--new data in room-- \n"); //not logging
           setRecievedMessages([...recievedMessages, data.message]);
+          setAllMessages([...allMessages , { type: "received" , message: data.message }]);
         }
       });
     } catch (error) {
@@ -78,29 +85,28 @@ export const ChatPage = () => {
         id="Chat-Container"
         className="flex flex-col w-full flex-grow overflow-auto"
       >
-        {recievedMessages.map((element) => {
-          return (
-            <div
-              id="Received-Messages"
-              className="flex flex-row justify-start p-2 sm:p-4"
-            >
-              <ul className="w-32 h-8 rounded-md bg-bg2 shadow-md p-2 sm:p-4 text-xs font-semibold text-black tracking-wider">
-                {element}
-              </ul>
-            </div>
-          );
-        })}
-        {sentMessages.map((element) => {
-          return (
-            <div
-              id="Sent-Messages"
-              className="flex flex-row justify-end p-2 sm:p-4"
-            >
-              <ul className="h-8 rounded-md bg-bg4 shadow-md p-2 sm:p-4 text-xs font-semibold text-black tracking-wider flex justify-center items-center">
-                {element}
-              </ul>
-            </div>
-          );
+        {allMessages.map((element) => {
+          if (element.type === "sent" ) {
+            return (
+              <div id="Sent-Message-Div" className="flex flex-row justify-end p-2 sm:p-4">
+                <ul className="bg-bg4 flex justify-center items-center p-2 rounded-md shadow-sm" >
+                  {element.message}
+                </ul>
+              </div>
+            )
+          } else {
+             return (
+               <div
+                 id="Received-Message-Div"
+                 className="flex flex-row justify-start p-2 sm:p-4 "
+               >
+                 <ul className="bg-bg2 flex justify-center items-center p-2 rounded-md shadow-sm">
+                   {element.message}
+                 </ul>
+               </div>
+             );
+
+          }
         })}
       </div>
       <form

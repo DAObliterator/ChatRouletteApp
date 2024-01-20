@@ -4,6 +4,9 @@ import { Schema } from "mongoose";
 
 const ChatSchema = Schema({
 
+    roomName: {
+        type: String
+    },
     participants: [{ type: String }],
 
 } , { timestamps: true})
