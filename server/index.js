@@ -108,67 +108,151 @@ const io = new Server(server, {
 });
 
 let arrayOfSockets = [];
+let activeChats = [];
+let roomNames =[];
+let arrayOfSockets2 = [];
 
 io.on("connection", async (socket) => {
+
+  console.log("connected")
+  //socket initialization
+
+  const randomId = socket.handshake.auth.randomId; //here randomId is correct
+
   console.log(
+    randomId,
+    " :randomId",
     socket.handshake.headers.cookie,
-    "---cookie in socket.handshake.headers--"
-  );
+    " :cookie \n"
+  ); //logging identity of socket also the unique identifier that binds socket to each session
+
+  socket.join(randomId);
 
   io.of("/").sockets.forEach((element) => {
     console.log(
-      element.handshake.headers.cookie,
-      " cookie in socket handshake header (inside loop) \n"
+      element.handshake.auth.randomId,
+      " --randomId (from)  -- unique to each browser -- \n"
     );
-    if (element.id !== socket.id) {
-      const newSocketObject = {
-        socketId: element.id,
-        randomId: element.handshake.headers.randomId,
-        cookie: actualSessionId(element.handshake.headers.cookie),
-      };
-
-      arrayOfSockets.push(newSocketObject);
+    if (!arrayOfSockets.includes(element.handshake.auth.randomId)) {
+      arrayOfSockets.push(element.handshake.auth.randomId);
+      arrayOfSockets2.push( { randomId: element.handshake.auth.randomId , socket: element} );
     }
   });
 
-  
-  arrayOfSockets = arrayOfSockets.filter((element) => {
-    return element.cookie !== undefined
-  });
+  console.log(arrayOfSockets, " ---arrayOfSockets--- \n");
 
-  console.log(arrayOfSockets, " ---arrayOfSockets \n");
+  const findParnter = (array) => {
+    let to = array[Math.floor(Math.random() * array.length)];
 
+    if (to !== socket.handshake.headers.randomId) {
+      console.log(to, "--to--");
+      return to;
+    } else {
+      return findParnter(array);
+    }
+  };
 
-  if (arrayOfSockets.length > 1) {
-    let roomName =
-      "room" +
-      socket.id +
-      arrayOfSockets[Math.floor(Math.random() * arrayOfSockets.length)]
-        .cookie;
+  const to = findParnter(arrayOfSockets); // returns correct to
+
+  if ( to !== randomId) {
+
+    const roomName = "room:" + randomId + to;
 
     socket.join(roomName);
 
-    const clients = io.sockets.adapter.rooms.get(roomName);
+    console.log( socket.id , "sender socket id \n");
 
-    const numClients = clients ? clients.size : 0;
-
-    io.to(roomName).emit("new event", "Updates");
-
-    let participants = "";
-
-    for (const clientId of clients) {
-      const clientSocket = io.sockets.sockets.get(clientId);
-
-      participants = participants + " " + clientSocket;
+    for ( const i of roomNames) {
+      if (i.randomId === to) {
+        i.socket.join(roomName);
+        console.log(i.socket.id , " receiver socket.id after joining room \n");
+      }
     }
 
-    io.to(roomName).emit(
-      "welcome-message",
-      `hello to ${roomName} and these are `,
-      JSON.stringify(participants),
-      `the participants \n`
-    );
+
+    if ( !roomNames.includes(roomName)) {
+      roomNames.push(roomName);
+    }
+
+    socket.to(roomName).emit("welcome-message", {
+      participants: [randomId, to],
+      roomName: roomName,
+    });
+
   }
+
+  socket.on("private message", (data) => {
+    if (data) {
+      console.log(data, "data from private message event \n");
+      try {
+        console.log( io.sockets.adapter.rooms , " all active rooms \n")
+        socket.to(data.room).emit("private message", (data) => { //got it there is no room called data.room
+          console.log(data , " attempting to emit \n");
+        });
+      } catch (error) {
+        console.error(`Error emitting private message: ${error}`);
+      }
+
+    } 
+      //console.log(data, " 8 ) ");
+      
+    
+  
+  });
+
+
+  /*console.log(to, " ---to--- \n");
+
+  let roomsCurrentUserIn = 0;
+  let roomsreceiverUserIn = 0;
+
+  for (const i of activeChats) {
+    if ( Array.isArray(i.participants) ? i.participants.includes(randomId) : false) {
+      roomsCurrentUserIn = roomsCurrentUserIn + 1;
+    }
+    if (Array.isArray(i.participants) ? i.participants.includes(to) : false) {
+      roomsreceiverUserIn = roomsreceiverUserIn + 1;
+    }
+  }
+
+  if (roomsCurrentUserIn === 0 && roomsreceiverUserIn === 0) {
+    if (arrayOfSockets.length > 1 && randomId !== to) {
+
+      activeChats.push({
+        id: activeChats.length > 0 ? activeChats.length : 0,
+        participants: [ randomId , to],
+      });
+
+    }
+    
+  }
+
+  console.log(activeChats, " --activeChats Array --- \n");
+
+  for ( const i of activeChats ) {
+
+    if (i.participants.length > 1) {
+      const roomName = 'room-' + i.participants[0] + "-" + i.participants[1];
+      if (!roomNames.includes(roomName)) {
+           roomNames.push(roomName);
+      }
+    
+    }
+
+  }
+
+  for ( const roomName of roomNames ) {
+      if (roomName.includes(randomId)) {
+        socket.join(roomName);
+
+        io.to(roomName).emit("roomCreationSuccessfull", (roomName) => {
+          console.log("roomName --- ", roomName);
+        });
+      }
+  }
+
+  console.log(roomNames)*/
+
 });
 
 const PORT = process.env.PORT;
