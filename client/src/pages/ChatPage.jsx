@@ -29,6 +29,27 @@ export const ChatPage = () => {
         );
       });
 
+       const socket = io("http://localhost:6040", {
+         withCredentials: true,
+         auth: {
+           randomId,
+         },
+       });
+
+       const sender = id.split(":")[0]; //this is a unique identifier that all sockets send from the same browser are coupled with , sockets change on reinitialization but identifier doesnt
+       const receiver = id.split(":")[1];
+
+      socket.on("private-message", (data) => {
+        if (data.sender !== sender) {
+          console.log(data, "--new data in room-- \n"); //not logging
+          setRecievedMessages([...recievedMessages, data.message]);
+          setAllMessages([
+            ...allMessages,
+            { type: "received", message: data.message },
+          ]);
+        }
+      });
+
     setRandomId(window.sessionStorage.getItem("randomId"));
   }, []);
 
@@ -53,6 +74,8 @@ export const ChatPage = () => {
       const sender = id.split(":")[0]; //this is a unique identifier that all sockets send from the same browser are coupled with , sockets change on reinitialization but identifier doesnt
       const receiver = id.split(":")[1];
 
+      console.log(allMessages, ` allMessages `);
+
 
       socket.emit(
         "private-message",
@@ -64,13 +87,7 @@ export const ChatPage = () => {
         }
       );
 
-      socket.on("private-message", (data) => {
-        if (data.sender !== sender) {
-          console.log(data, "--new data in room-- \n"); //not logging
-          setRecievedMessages([...recievedMessages, data.message]);
-          setAllMessages([...allMessages , { type: "received" , message: data.message }]);
-        }
-      });
+      
     } catch (error) {
       console.log( error , " --error happened")//not logging either
     }
@@ -85,6 +102,7 @@ export const ChatPage = () => {
         id="Chat-Container"
         className="flex flex-col w-full flex-grow overflow-auto"
       >
+        
         {allMessages.map((element) => {
           if (element.type === "sent" ) {
             return (

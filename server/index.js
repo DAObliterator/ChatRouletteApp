@@ -89,7 +89,6 @@ app.post("/initialize-session", async (req, res) => {
 });
 
 app.get("/check-session", (req, res) => {
-  console.log(req.session, " -- req.session in /check-session \n");
   if (req.session.randomId && req.session.username) {
     res.status(200).json({
       message: "randomId and username successfully added to the req.session \n",
@@ -124,10 +123,6 @@ io.on("connection", async (socket) => {
     //storing all active sockets in an array coupled with a unique identifier
     // to know which browser they are coming from
     io.of("/").sockets.forEach((element) => {
-      console.log(
-        element.handshake.auth.randomId,
-        " --randomId (from)  -- unique to each browser -- \n"
-      );
       if (!arrayOfSockets.includes(element.handshake.auth.randomId)) {
         arrayOfSockets.push({
           randomId: element.handshake.auth.randomId,
@@ -136,18 +131,12 @@ io.on("connection", async (socket) => {
       }
     });
 
-    console.log(arrayOfSockets, " ---arrayOfSockets--- \n");
-
     //finding a Parnter out of all active sockets
     if (arrayOfSockets.length > 1) {
       const findParnter = (array) => {
         let to = array[Math.floor(Math.random() * array.length)];
 
         if (to.randomId !== data.randomId) {
-          console.log(
-            to.randomId,
-            "--randomId associated with the reciever --"
-          );
           return to;
         } else {
           return findParnter(array);
@@ -158,27 +147,27 @@ io.on("connection", async (socket) => {
 
       socket.join(`${from}:${to.randomId}`);
       to.socket.join(`${from}:${to.randomId}`);
-      const roomName =  from + ":" + to.randomId;
+      const roomName = from + ":" + to.randomId;
       roomNames.push(roomName);
 
       socket.emit("welcome-message", {
         roomName,
         participants: [from, to.randomId],
       });
-
     }
   });
 
-  let roomNames2 = []
-  socket.on("private-message" , (data) => {
+  let roomNames2 = [];
+  let count = 0;
+  socket.on("private-message", (data) => {
+    count = count + 1;
 
-    console.log( socket.id , " ---socket.id --- inside of private-message \n");
+    console.log(
+      socket.id,
+      ` ---socket.id --- ${count} inside of private-message \n`
+    );
 
     io.of("/").sockets.forEach((element) => {
-      console.log(
-        element.handshake.auth.randomId,
-        " --randomId (from)  -- unique to each browser -- \n"
-      );
       if (!arrayOfSockets.includes(element.handshake.auth.randomId)) {
         arrayOfSockets.push({
           randomId: element.handshake.auth.randomId,
@@ -187,20 +176,15 @@ io.on("connection", async (socket) => {
       }
     });
 
-
-    console.log(arrayOfSockets , "--arrayOfSockets inside private-message \n");
-    
-    const sender = data.room.split(":")[0]; //this is a unique identifier that all sockets send from the same browser are coupled with , sockets change on reinitialization but identifier doesnt 
+    const sender = data.room.split(":")[0]; //this is a unique identifier that all sockets send from the same browser are coupled with , sockets change on reinitialization but identifier doesnt
     const receiver = data.room.split(":")[1];
 
-    console.log( sender , receiver , " ---sender and ---receiver \n");
+    socket.join(data.room);
 
-    socket.join(data.room)
-
-    for ( const i of arrayOfSockets) {
+    for (const i of arrayOfSockets) {
       if (i.randomId === receiver) {
-        i.socket.join(data.room)
-        console.log(i.socket.id , " --- id of the other socket in the room \n");
+        i.socket.join(data.room);
+        console.log(i.socket.id, " --- id of the other socket in the room \n");
       }
     }
 
@@ -209,10 +193,7 @@ io.on("connection", async (socket) => {
       " all rooms inside private message \n"
     );
 
-    io.to(data.room).emit("private-message" , (data))
-
-    
-
+    io.to(data.room).emit("private-message", data);
   });
 });
 
