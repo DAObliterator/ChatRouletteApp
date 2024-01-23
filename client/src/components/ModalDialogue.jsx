@@ -5,54 +5,12 @@ import { useNavigate } from "react-router-dom";
 
 export const ModalDialogue = ({ showModal, setShowModal }) => {
   const [roomName, setRoomName] = useState("");
-
   const navigate = useNavigate();
   const handlePartnerCoupling = (e) => {
     e.preventDefault();
 
-    const randomId = window.sessionStorage.getItem("randomId");
-    const username = window.sessionStorage.getItem("username");
-
-    const userDetails = { randomId, username };
-
-
-  function initiateSocketConnection () {
-
-      const socket = io("http://localhost:6040", {
-        withCredentials: true,
-        auth: {
-          randomId,
-        },
-      });
-
-      socket.emit("create-room" , ({ randomId , username }) )
-
-      socket.on("welcome-message", (msg) => {
-        console.log(msg, " message from room");
-        setRoomName(msg.roomName);
-        if (msg.participants && msg.participants.length > 1 && msg.roomName) {
-             navigate(`/chat/new/${msg.roomName}`);
-        } 
-      });
-
-
-    }
-
-    initiateSocketConnection();
-
-  
-
-    
-
-    /*
-    FIND A PARNTER COMPLETE PAIRING CREATE A ROOM AND A ROOM ID USING TWO 
-    UNIQUE SOCKET IDENTFIERS , USE THAT ROOM ID AT THE END OF THE ROUTE ,
-    EACH COMPONENT THAT IS RENDERED AT THESE CUSTOM ROUTES ARE GOING TO BE 
-    DIFFERENT SLIGHTLY
-    */
-
     setShowModal(false);
-    //navigate("/chats/new");
+    navigate("/chats/new");
   };
 
   return (

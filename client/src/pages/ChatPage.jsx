@@ -10,9 +10,28 @@ export const ChatPage = () => {
   const [recievedMessages, setRecievedMessages] = useState([]);
   const [sentMessages, setSentMessages] = useState([]);
   const [randomId, setRandomId] = useState("");
-  const [ allMessages , setAllMessages ] = useState([]);
+  const [allMessages, setAllMessages] = useState([]);
+  const [sentButtonClicked, setSentButtonClicked] = useState(false);
 
   const { id } = useParams();
+
+  const rId = window.sessionStorage.getItem("randomId");
+  const username = window.sessionStorage.getItem("username");
+
+  const socket = io("http://localhost:6040/", {
+    withCredentials: true,
+    auth: {
+      randomId: rId,
+    },
+  });
+
+  socket.on("connect", () => {
+    console.log(socket.id);
+
+    socket.emit("find-partner");
+  });
+
+  
 
   useEffect(() => {
     axios
@@ -29,69 +48,42 @@ export const ChatPage = () => {
         );
       });
 
-       const socket = io("http://localhost:6040", {
-         withCredentials: true,
-         auth: {
-           randomId,
-         },
-       });
+      
 
-       const sender = id.split(":")[0]; //this is a unique identifier that all sockets send from the same browser are coupled with , sockets change on reinitialization but identifier doesnt
-       const receiver = id.split(":")[1];
-
-      socket.on("private-message", (data) => {
-        if (data.sender !== sender) {
-          console.log(data, "--new data in room-- \n"); //not logging
-          setRecievedMessages([...recievedMessages, data.message]);
-          setAllMessages([
-            ...allMessages,
-            { type: "received", message: data.message },
-          ]);
-        }
+    
+    /*socket.emit("welcome-message", {
+        rId: window.sessionStorage.getItem("randomId"),
+        message: "hello from socket"
       });
 
-    setRandomId(window.sessionStorage.getItem("randomId"));
+      socket.on("welcome-message" , (data) => {
+        console.log( JSON.stringify(data) , " ---message back from the server \n")
+      })
+
+      socket.on("welcome-in-room" , (data) => {
+        console.log(JSON.stringify(data) , " ---message in welcome in room \n");
+      })*/
   }, []);
 
-  const handleMessageTransmission = (e) => {
+  useEffect(() => {}, [sentButtonClicked]);
+
+  const handleFormSubmission = (e) => {
     e.preventDefault();
-    console.log(`handleMessageTransmission \n`);
-
-    setSentMessages([...sentMessages, message]);
-    setAllMessages([
-      ...allMessages,
-      { type: "sent", message: message },
-    ]);
-
-    try {
-      const socket = io("http://localhost:6040", {
-        withCredentials: true,
-        auth: {
-          randomId,
-        },
-      });
-
-      const sender = id.split(":")[0]; //this is a unique identifier that all sockets send from the same browser are coupled with , sockets change on reinitialization but identifier doesnt
-      const receiver = id.split(":")[1];
-
-      console.log(allMessages, ` allMessages `);
-
-
-      socket.emit(
-        "private-message",
-        { room: id, message: message, sender: sender , receiver: receiver },
-        (data) => {
-          if (data) {
-            console.log(data, " private message data "); //not logging
-          }
-        }
-      );
-
-      
-    } catch (error) {
-      console.log( error , " --error happened")//not logging either
-    }
+    let updatedMessages = allMessages;
+    updatedMessages = allMessages.concat({
+      message: message,
+      type: "sent",
+    });
+    setAllMessages(updatedMessages);
+    
+    setSentButtonClicked(!sentButtonClicked);
   };
+
+  const data = { rId: window.sessionStorage.getItem("randomId") };
+
+  
+
+
 
   return (
     <div
@@ -102,28 +94,29 @@ export const ChatPage = () => {
         id="Chat-Container"
         className="flex flex-col w-full flex-grow overflow-auto"
       >
-        
         {allMessages.map((element) => {
-          if (element.type === "sent" ) {
+          if (element.type === "sent") {
             return (
-              <div id="Sent-Message-Div" className="flex flex-row justify-end p-2 sm:p-4">
-                <ul className="bg-bg4 flex justify-center items-center p-2 rounded-md shadow-sm" >
+              <div
+                id="Sent-Message-Div"
+                className="flex flex-row justify-end p-2 sm:p-4"
+              >
+                <ul className="bg-bg4 flex justify-center items-center p-2 rounded-md shadow-sm">
                   {element.message}
                 </ul>
               </div>
-            )
+            );
           } else {
-             return (
-               <div
-                 id="Received-Message-Div"
-                 className="flex flex-row justify-start p-2 sm:p-4 "
-               >
-                 <ul className="bg-bg2 flex justify-center items-center p-2 rounded-md shadow-sm">
-                   {element.message}
-                 </ul>
-               </div>
-             );
-
+            return (
+              <div
+                id="Received-Message-Div"
+                className="flex flex-row justify-start p-2 sm:p-4 "
+              >
+                <ul className="bg-bg2 flex justify-center items-center p-2 rounded-md shadow-sm">
+                  {element.message}
+                </ul>
+              </div>
+            );
           }
         })}
       </div>
@@ -131,7 +124,7 @@ export const ChatPage = () => {
         id="Send-Message-form"
         className="flex flex-row justify-evenly p-2 sm:p-4 h-24 bg-bg2"
         method="post"
-        onSubmit={(e) => handleMessageTransmission(e)}
+        onSubmit={(e) => handleFormSubmission(e)}
       >
         <div
           id="Profile-Image-Wrapper"
