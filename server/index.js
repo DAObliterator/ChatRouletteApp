@@ -118,6 +118,8 @@ io.on("connection", (socket) => {
 
   socket.on("find-partner", async () => {
 
+    console.log(`${socket.id} and ${socket.handshake.auth.randomId} --- inside find-partner \n`);
+
     const allSockets = await io.fetchSockets();
     const allRooms = io.sockets.adapter.rooms;
     let uniqueBrowserIdentifier = socket.handshake.auth.randomId;
@@ -147,15 +149,17 @@ io.on("connection", (socket) => {
       if ( allSockets.length > 1) {
 
         for (const i of allSockets) {
-          let otherBrowserIdentfier = i.handshake.auth.randomId;
+          let otherBrowserIdentfier = i.handshake.auth.randomId ;
 
-          if (otherBrowserIdentfier !== uniqueBrowserIdentifier) {
+          if (otherBrowserIdentfier !== uniqueBrowserIdentifier && uniqueBrowserIdentifier !== null) {
             allRooms.size > 1 &&
               allRoomNames.forEach((element) => {
                 let roomParticipantsArray = element.split(":");
                 if (!roomParticipantsArray.includes(otherBrowserIdentfier)) {
                   //fmaking sure browser not in any room
                   noOfRooms_ = noOfRooms_ + 1;
+                } else {
+                  i.join(allRooms[element]);
                 }
               });
 
@@ -167,6 +171,7 @@ io.on("connection", (socket) => {
 
               socket.join(roomName);
               i.join(roomName);
+              io.to(roomName).emit("found-partner" , {roomName: roomName})
             }
           }
 
@@ -253,6 +258,10 @@ io.on("connection", (socket) => {
   });
 
   socket.on("private-message", (data) => {
+
+    console.log(
+      `${socket.id} and ${socket.handshake.auth.randomId} --- inside private-message \n`
+    );
     const allRooms = io.sockets.adapter.rooms;
 
     console.log(allRooms, "allRooms inside private-message listener (1) \n");
