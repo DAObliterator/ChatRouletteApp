@@ -61,14 +61,14 @@ export const ChatPage = () => {
       console.log(`${JSON.stringify(data)} --- data from listening to private-message event on client`);
       console.log( allMessages, " allMessages (1inside socket.on private-message )  ")
       if (data.rId !== rId) {
+         setAllMessages((prevMessages) => [
+           ...prevMessages,
+           {
+             message: data.message,
+             type: "received",
+           },
+         ]);
         
-        setAllMessages([
-          ...allMessages,
-          {
-            message: data.message,
-            type: "received",
-          },
-        ]);
       }
       
     })
@@ -99,8 +99,8 @@ export const ChatPage = () => {
         rId
       }
     );
-    setAllMessages([
-      ...allMessages,
+    setAllMessages((prevMessages) => [
+      ...prevMessages,
       {
         message: message,
         type: "sent",
