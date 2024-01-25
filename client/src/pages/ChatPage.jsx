@@ -1,7 +1,7 @@
 import React, { useState, useEffect } from "react";
 import io from "socket.io-client";
 import { v4 as uuidv4 } from "uuid";
-import axios from "axios";
+import axios, { all } from "axios";
 import { randomUsernameGenerator } from "../utils/generateUsername.js";
 import { useParams } from "react-router-dom";
 
@@ -25,14 +25,6 @@ export const ChatPage = () => {
     },
   });
 
-  socket.on("connect", () => {
-    console.log(socket.id);
-
-    socket.emit("find-partner");
-  });
-
-  
-
   useEffect(() => {
     axios
       .get("http://localhost:6040/check-session", { withCredentials: true })
@@ -48,9 +40,39 @@ export const ChatPage = () => {
         );
       });
 
-      
+    socket.on("connect", () => {
+      console.log(socket.id);
 
-    
+      socket.emit("find-partner");
+    });
+
+    socket.on("found-partner", (data) => {
+      console.log(
+        data,
+        " -- listening to found-partner event from the server side -- \n"
+      );
+
+      if (data.roomName.split(":").includes(rId)) {
+        window.sessionStorage.setItem("roomName", data.roomName);
+      }
+    });
+
+    socket.on("private-message" , (data) => {
+      console.log(`${JSON.stringify(data)} --- data from listening to private-message event on client`);
+      console.log( allMessages, " allMessages (1inside socket.on private-message )  ")
+      if (data.rId !== rId) {
+        
+        setAllMessages([
+          ...allMessages,
+          {
+            message: data.message,
+            type: "received",
+          },
+        ]);
+      }
+      
+    })
+
     /*socket.emit("welcome-message", {
         rId: window.sessionStorage.getItem("randomId"),
         message: "hello from socket"
@@ -65,25 +87,30 @@ export const ChatPage = () => {
       })*/
   }, []);
 
-  useEffect(() => {}, [sentButtonClicked]);
-
   const handleFormSubmission = (e) => {
     e.preventDefault();
-    let updatedMessages = allMessages;
-    updatedMessages = allMessages.concat({
-      message: message,
-      type: "sent",
-    });
-    setAllMessages(updatedMessages);
     
+
+    socket.emit(
+      "private-message",
+      {
+        roomName: window.sessionStorage.getItem("roomName"),
+        message: message,
+        rId
+      }
+    );
+    setAllMessages([
+      ...allMessages,
+      {
+        message: message,
+        type: "sent",
+      },
+    ]);
+
     setSentButtonClicked(!sentButtonClicked);
   };
 
   const data = { rId: window.sessionStorage.getItem("randomId") };
-
-  
-
-
 
   return (
     <div
