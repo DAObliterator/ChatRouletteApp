@@ -5,7 +5,8 @@ import { randomUsernameGenerator } from '../utils/generateUsername';
 
 export const Home = () => {
   const [showModal, setShowModal] = useState(false);
-  useEffect(() => {
+  
+  /*useEffect(() => {
     console.log("useEffect executed");
 
     const randomId = randomUsernameGenerator().randomId;
@@ -39,7 +40,7 @@ export const Home = () => {
           " --- error happened while attempting to initialize session \n"
         );
       });
-  }, []);
+  }, []);*/
 
   const destroyModal = () => {
     setShowModal(false);

@@ -1,5 +1,6 @@
 import express from "express";
 import dotenv from "dotenv";
+import path from "path";
 import cors from "cors";
 import mongoose from "mongoose";
 import session from "express-session";
@@ -12,16 +13,11 @@ const server = http.createServer(app);
 import { Server } from "socket.io";
 import { actualSessionId } from "./utils/actualSessionId.js";
 import { Socket } from "dgram";
-import express from "express";
 import { fileURLToPath } from "url";
 import { dirname } from "path";
 
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = dirname(__filename);
-
-
-
-
 
 const DB = process.env.DATABASE_STRING.replace(
   "<password>",
@@ -120,187 +116,64 @@ const io = new Server(server, {
   },
 });
 
-let  socketsMap = {}
+let socketsMap = {};
 
 io.on("connection", (socket) => {
-  console.log(socket.id, " --- ");
+  
+
+  console.log(socket.id, " -in-connection- ");
 
   socketsMap[socket.handshake.auth.randomId] = socket.id;
 
   socket.on("find-partner", async () => {
 
-    console.log(`${socket.id} and ${socket.handshake.auth.randomId} --- inside find-partner \n`);
+    const currentRandomId = socket.handshake.auth.randomId;
 
     const allSockets = await io.fetchSockets();
-    const allRooms = io.sockets.adapter.rooms;
-    let uniqueBrowserIdentifier = socket.handshake.auth.randomId;
-    let noOfRooms = 0;
-    let noOfRooms_ = 0;
 
-    const allRoomNames = [...allRooms.keys()];
+    for (const i of allSockets) {
+      const randomId = i.handshake.auth.randomId;
 
-    allRooms.size > 1 &&  allRoomNames.forEach((element) => {
-      let roomParticipantsArray = element.split(":");
-      if (!roomParticipantsArray.includes(uniqueBrowserIdentifier)) {
-        //fmaking sure browser not in any room
-        noOfRooms = noOfRooms + 1;
-      } /*else {
-        // if it is in a room
-        console.log(allRooms[element] , " bhhh ")
-        !allRooms[element].has(socket.id) && socket.join(element); //making sure current socket joins the room
-      }*/
-    });
+      console.log(
+        randomId,
+        " randomId ",
+        i.id,
+        " socket.id ",
+        i.inRoom,
+        " room status \n "
+      );
 
-    if (noOfRooms === allRooms.size) {
-      //means the browser in not in any room
+      if (
+        (randomId !== currentRandomId ) &&
+        i.inRoom === undefined
+      ) {
 
-      let roomName = "";
+        let roomName =
+           currentRandomId > randomId
+             ? `${currentRandomId}:${randomId}`
+             : `${randomId}:${currentRandomId}`;
 
-      //find a browser that is not there in any room and that is not the current browser either
-      if ( allSockets.length > 1) {
 
-        for (const i of allSockets) {
-          let otherBrowserIdentfier = i.handshake.auth.randomId ;
+        socket.join(roomName)
+         // i want to execute a function after the successfull completion of this function
 
-          if (otherBrowserIdentfier !== uniqueBrowserIdentifier && uniqueBrowserIdentifier !== null) {
-            allRooms.size > 1 &&
-              allRoomNames.forEach((element) => {
-                let roomParticipantsArray = element.split(":");
-                if (!roomParticipantsArray.includes(otherBrowserIdentfier)) {
-                  //fmaking sure browser not in any room
-                  noOfRooms_ = noOfRooms_ + 1;
-                } else {
-                  i.join(allRooms[element]);
-                }
-              });
+        socket.inRoom = true;
 
-            if (noOfRooms_ === allRooms.size) {
-              roomName =
-                uniqueBrowserIdentifier > otherBrowserIdentfier
-                  ? `${uniqueBrowserIdentifier}:${otherBrowserIdentfier}`
-                  : `${otherBrowserIdentfier}:${uniqueBrowserIdentifier}`;
+        i.join(roomName)
 
-              socket.join(roomName);
-              i.join(roomName);
-              io.to(roomName).emit("found-partner" , {roomName: roomName})
-            }
-          }
+        i.inRoom = true;
 
-        }
+        io.to(roomName).emit("room-joined" , { roomName: roomName } )
 
       }
-      
     }
-
-    const allRoomNamesAfter = io.sockets.adapter.rooms;
-
-    console.log(allRoomNamesAfter , " allRoomNames *** ")
-
-   
-
-    /*for (const i of allSockets) {
-      //find a randomSocket
-      // Check if randomIdSocketsMap has an entry for the current randomId
-      if (!randomIdSocketsMap.has(uniqueBrowserIdentifier) ) {
-        // If not, create a new Set and add it to the map
-        randomIdSocketsMap.set(uniqueBrowserIdentifier, new Set());
-      }
-
-      // Add the current socket to the set associated with the randomId
-      randomIdSocketsMap.get(uniqueBrowserIdentifier).add(i);
-    }
-    console.log(randomIdSocketsMap , "---")
-
-    let roomName = "";
-    for (const [key, value] of randomIdSocketsMap) {
-      if (key !== uniqueBrowserIdentifier) {
-        if (
-          !allRooms.has(`${key}:${uniqueBrowserIdentifier}`) ||
-          !allRooms.has(`${uniqueBrowserIdentifier}:${key}`)
-        ) {
-          if (key > uniqueBrowserIdentifier) {
-            roomName = `${key}:${uniqueBrowserIdentifier}`;
-
-            socket.join(roomName);
-            value.forEach((i) => {
-              if (!(allRooms[`${key}:${uniqueBrowserIdentifier}`].has(i))) {
-                i.join(roomName);
-              }
-            });
-            break;
-          } else {
-            roomName = `${uniqueBrowserIdentifier}:${key}`;
-
-            socket.join(roomName);
-            value.forEach((i) => {
-              if (!allRooms[`${uniqueBrowserIdentifier}:${key}`].has(i)) {
-                i.join(roomName);
-              }
-            });
-            break;
-          }
-        } else if (!allRooms[`${key}:${uniqueBrowserIdentifier}`].has(socket.id)) {
-          roomName = `${key}:${uniqueBrowserIdentifier}`;
-
-          socket.join(roomName);
-          value.forEach((i) => {
-            if (!allRooms[`${key}:${uniqueBrowserIdentifier}`].has(i.id)) {
-              i.join(roomName);
-            }
-          });
-          break;
-        } else if (!allRooms[`${uniqueBrowserIdentifier}:${key}`].has(socket.id)) {
-          roomName = `${uniqueBrowserIdentifier}:${key}`;
-
-          socket.join(roomName);
-          value.forEach((i) => {
-            if (!allRooms[`${uniqueBrowserIdentifier}:${key}`].has(i.id)) {
-              i.join(roomName);
-            }
-          });
-          break;
-        }
-      }
-    }*/
-
-     
-
-    
   });
 
-  socket.on("private-message", (data) => {
+  socket.on("private-message" , (data) => {
 
-    console.log(
-      `${socket.id} and ${socket.handshake.auth.randomId} --- inside private-message \n`
-    );
-    const allRooms = io.sockets.adapter.rooms;
+    io.to(data.roomName).emit("private-message" , data );
 
-    console.log(allRooms, "allRooms inside private-message listener (1) \n");
-
-    const allRoomNames = [...allRooms.keys()];
-
-    console.log(data, " grrr ");
-
-    let count =0;
-    allRoomNames.forEach((element) => {
-     
-      if (element === data.roomName) {
-         count = count + 1;
-        socket.join(data.roomName);
-
-        socket.broadcast.to(data.roomName).emit("private-message", {
-          message: data.message,
-          roomName: data.roomName,
-          rId: data.rId
-        });
-      } 
-    });
-
-    console.log(allRooms, "allRooms inside private-message listener (2) \n");
- 
-  });
-
- 
+  })
 
 });
 

@@ -46,10 +46,10 @@ export const ChatPage = () => {
       socket.emit("find-partner");
     });
 
-    socket.on("found-partner", (data) => {
+    socket.on("room-joined", (data) => {
       console.log(
         data,
-        " -- listening to found-partner event from the server side -- \n"
+        " -- listening to room-joined event from the server side -- \n"
       );
 
       if (data.roomName.split(":").includes(rId)) {
