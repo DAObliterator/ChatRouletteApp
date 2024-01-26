@@ -119,20 +119,19 @@ const io = new Server(server, {
 let socketsMap = {};
 
 io.on("connection", (socket) => {
-  
-
   console.log(socket.id, " -in-connection- ");
 
   socketsMap[socket.handshake.auth.randomId] = socket.id;
 
   socket.on("find-partner", async () => {
-
     const currentRandomId = socket.handshake.auth.randomId;
+    const currentUsername_ = socket.handshake.auth.username_;
 
     const allSockets = await io.fetchSockets();
 
     for (const i of allSockets) {
       const randomId = i.handshake.auth.randomId;
+      const username_ = i.handshake.auth.username_;
 
       console.log(
         randomId,
@@ -143,38 +142,39 @@ io.on("connection", (socket) => {
         " room status \n "
       );
 
-      if (
-        (randomId !== currentRandomId ) &&
-        i.inRoom === undefined
-      ) {
-
+      if (randomId !== currentRandomId && i.inRoom === undefined) {
         let roomName =
-           currentRandomId > randomId
-             ? `${currentRandomId}:${randomId}`
-             : `${randomId}:${currentRandomId}`;
+          currentRandomId > randomId
+            ? `${currentRandomId}:${randomId}`
+            : `${randomId}:${currentRandomId}`;
 
-
-        socket.join(roomName)
-         // i want to execute a function after the successfull completion of this function
+        socket.join(roomName);
+        // i want to execute a function after the successfull completion of this function
 
         socket.inRoom = true;
 
-        i.join(roomName)
+        i.join(roomName);
 
         i.inRoom = true;
 
-        io.to(roomName).emit("room-joined" , { roomName: roomName } )
-
+        io.to(roomName).emit("room-joined", {
+          roomName: roomName,
+          participants: [
+            {
+              randomId: currentRandomId,
+              type: "sender",
+              username_: currentUsername_,
+            },
+            { randomId: randomId, type: "receiver", username_: username_ },
+          ],
+        });
       }
     }
   });
 
-  socket.on("private-message" , (data) => {
-
-    io.to(data.roomName).emit("private-message" , data );
-
-  })
-
+  socket.on("private-message", (data) => {
+    io.to(data.roomName).emit("private-message", data);
+  });
 });
 
 const PORT = process.env.PORT;

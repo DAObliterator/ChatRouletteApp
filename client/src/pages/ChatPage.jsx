@@ -12,6 +12,7 @@ export const ChatPage = () => {
   const [randomId, setRandomId] = useState("");
   const [allMessages, setAllMessages] = useState([]);
   const [sentButtonClicked, setSentButtonClicked] = useState(false);
+  const [ username_ , setUsername_ ] = useState("");
 
   const { id } = useParams();
 
@@ -22,10 +23,12 @@ export const ChatPage = () => {
     withCredentials: true,
     auth: {
       randomId: rId,
+      username: username_
     },
   });
 
   useEffect(() => {
+
     axios
       .get("http://localhost:6040/check-session", { withCredentials: true })
       .then((response) => {
@@ -43,7 +46,7 @@ export const ChatPage = () => {
     socket.on("connect", () => {
       console.log(socket.id);
 
-      socket.emit("find-partner");
+      socket.emit("find-partner" );
     });
 
     socket.on("room-joined", (data) => {
@@ -66,6 +69,7 @@ export const ChatPage = () => {
            {
              message: data.message,
              type: "received",
+             
            },
          ]);
         
@@ -121,6 +125,7 @@ export const ChatPage = () => {
         id="Chat-Container"
         className="flex flex-col w-full flex-grow overflow-auto"
       >
+        {username_}
         {allMessages.map((element) => {
           if (element.type === "sent") {
             return (
