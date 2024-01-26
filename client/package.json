@@ -2,6 +2,7 @@
   "name": "client",
   "private": true,
   "version": "0.0.0",
+  "proxy": "https://talkshii.onrender.com",
   "type": "module",
   "scripts": {
     "dev": "vite",

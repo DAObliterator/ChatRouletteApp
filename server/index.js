@@ -12,6 +12,16 @@ const server = http.createServer(app);
 import { Server } from "socket.io";
 import { actualSessionId } from "./utils/actualSessionId.js";
 import { Socket } from "dgram";
+import express from "express";
+import { fileURLToPath } from "url";
+import { dirname } from "path";
+
+const __filename = fileURLToPath(import.meta.url);
+const __dirname = dirname(__filename);
+
+
+
+
 
 const DB = process.env.DATABASE_STRING.replace(
   "<password>",
@@ -32,6 +42,7 @@ mongoose
 app.use(express.json());
 app.use(bodyParser.json());
 app.use(bodyParser.urlencoded({ extended: true }));
+app.use(express.static(path.join(__dirname, "build")));
 
 app.use(
   cors({
