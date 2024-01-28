@@ -13,6 +13,7 @@ export const ChatPage = () => {
   const [allMessages, setAllMessages] = useState([]);
   const [sentButtonClicked, setSentButtonClicked] = useState(false);
   const [ username_ , setUsername_ ] = useState("");
+  const [ receiver , setReceiver ]= useState("");
 
   const { id } = useParams();
 
@@ -51,9 +52,15 @@ export const ChatPage = () => {
 
     socket.on("room-joined", (data) => {
       console.log(
-        data,
+        JSON.stringify(data),
         " -- listening to room-joined event from the server side -- \n"
       );
+
+      const receiverObject = data.participants.find(
+        (obj) => obj.type === "receiver"
+      );
+
+      setReceiver(receiverObject.randomId)
 
       if (data.roomName.split(":").includes(rId)) {
         window.sessionStorage.setItem("roomName", data.roomName);
@@ -114,6 +121,15 @@ export const ChatPage = () => {
     setSentButtonClicked(!sentButtonClicked);
   };
 
+  const triggerReload = (e) => {
+
+    e.preventDefault();
+
+    window.location.reload();
+
+
+  }
+
   const data = { rId: window.sessionStorage.getItem("randomId") };
 
   return (
@@ -125,7 +141,17 @@ export const ChatPage = () => {
         id="Chat-Container"
         className="flex flex-col w-full flex-grow overflow-auto"
       >
-        {username_}
+        {receiver && (
+          <p className="flex justify-center text-lg text-white tracking-wider">
+            You have been paired with <strong className="ml-2" >  {receiver}</strong>
+          </p>
+        )}
+        {receiver === "" && (
+          <p className="flex justify-center text-lg text-white tracking-wider">
+            Could not Find Partner Click <strong className="ml-2" >New</strong>
+          </p>
+        )}
+
         {allMessages.map((element) => {
           if (element.type === "sent") {
             return (
@@ -156,7 +182,6 @@ export const ChatPage = () => {
         id="Send-Message-form"
         className="flex flex-row justify-evenly p-2 sm:p-4 h-24 bg-bg2"
         method="post"
-        onSubmit={(e) => handleFormSubmission(e)}
       >
         <div
           id="Profile-Image-Wrapper"
@@ -178,8 +203,16 @@ export const ChatPage = () => {
         <button
           id="Send-Message-Button"
           className=" rounded-md shadow-md text-center flex justify-center items-center"
+          onClick={(e) => handleFormSubmission(e)}
         >
           Send
+        </button>
+        <button
+          id="Send-Message-Button"
+          className=" rounded-md shadow-md text-center flex justify-center items-center ml-1"
+          onClick={(e) => triggerReload(e)}
+        >
+          New
         </button>
       </form>
     </div>
